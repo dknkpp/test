@@ -1,3 +1,4 @@
+MakeFileListFromDir.exe
 test.txt
 version.txt
 xx.txt
