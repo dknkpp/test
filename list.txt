@@ -1,2 +1,4 @@
 test.txt
+version.txt
+xx.txt
 tdir/hoge.txt
