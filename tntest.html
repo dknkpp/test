@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <style>
+        div#viewer {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+        }
+    </style>
+    <script type="text/javascript">
+    	var internalWebSocketPort = 56543;
+        var wsURI = "ws://localhost:" + internalWebSocketPort;
+        var ws = new WebSocket(wsURI);
+
+        var vTextRegExp = new RegExp("^\\((?<mkey>[^:\\(\\)]+):(?<mval>[^:\\(\\)]+)\\)", "u");
+
+        var obsparam = new Object();
+        obsparam.controlLevel = 0;
+        obsparam.currentScene = "";
+        obsparam.currentTransition = "";
+        obsparam.loaded = false;
+        ObsParamLoad(obsparam);
+
+        function InitWS() {
+//            ws = new WebSocket(wsURI);
+            ws.onmessage = function (e) {
+                document.getElementById('chat').innerHTML += e.data + "<br>";
+            };
+            ws.onerror = function (e) {
+                errorLog("closed");
+                ws.close();
+            };
+        }
+
+
+        function CheckWS() {
+            if (ws.readyState != 1) {
+                errorLog("not connected....");
+                ws.close();
+                ws = null;
+                try {
+                    ws = new WebSocket(wsURI);
+                    InitWS();
+                } catch (e) {
+
+                }
+            } else {
+                errorLog("connected....");
+            }
+        }
+
+        window.onload = function () {
+            InitWS();
+        };
+        setInterval("CheckWS()", 3000);
+
+        function errorLog(text) {
+            //		document.getElementById('state').innerHTML += text+"<br>";
+        }
+        function writeLog(text) {
+            //		console.log(text);
+        }
+    </script>
+</head>
+<body>
+    <div id="viewer"></div>
+    <div id="chat"></div>
+    <div id="state"></div>
+</body>
+</html>
