@@ -8,6 +8,9 @@
             top: 0px;
             left: 0px;
         }
+        body{
+         color:#AAAAAA;
+        }
     </style>
     <script type="text/javascript">
     	var internalWebSocketPort = 56543;
@@ -21,6 +24,7 @@
 //            ws = new WebSocket(wsURI);
             ws.onmessage = function (e) {
                 document.getElementById('chat').innerHTML += e.data + "<br>";
+                writeLog(e.data);
             };
             ws.onerror = function (e) {
                 errorLog("closed");
@@ -38,7 +42,7 @@
                     ws = new WebSocket(wsURI);
                     InitWS();
                 } catch (e) {
-
+			errorLog(e);
                 }
             } else {
                 errorLog("connected....");
