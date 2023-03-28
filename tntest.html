@@ -16,12 +16,6 @@
 
         var vTextRegExp = new RegExp("^\\((?<mkey>[^:\\(\\)]+):(?<mval>[^:\\(\\)]+)\\)", "u");
 
-        var obsparam = new Object();
-        obsparam.controlLevel = 0;
-        obsparam.currentScene = "";
-        obsparam.currentTransition = "";
-        obsparam.loaded = false;
-        ObsParamLoad(obsparam);
 
         function InitWS() {
 //            ws = new WebSocket(wsURI);
