@@ -59,9 +59,11 @@
                             url = "https://player.twitch.tv/?channel="
                                 + media.TOptions["TwitchVideoTargetID"];
                         } else if (media.TOptions["TwitchVideoRawUrl"] != null && media.TOptions["TwitchVideoRawUrl"] != "") {
-                            let u1m = url.match(tclip); // no embed clip url
-                            let u2m = url.match(tvod); // archive video
-                            let u3m = url.match(ttop); // streaming url
+                            let u1m = media.TOptions["TwitchVideoRawUrl"].match(tclip); // no embed clip url
+                            let u2m = media.TOptions["TwitchVideoRawUrl"].match(tvod); // archive video
+                            let u3m = media.TOptions["TwitchVideoRawUrl"].match(ttop); // streaming url
+
+                            console.log(u1m);
 
                             if (u1m) {
                                 url = "https://clips.twitch.tv/embed?clip=" + u1m.groups.mval;
