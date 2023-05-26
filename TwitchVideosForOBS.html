@@ -17,9 +17,10 @@
         
         let wsURI = "ws://localhost:" + searchParams.get('port');
         let ws = new WebSocket(wsURI);
-        let tclip = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/[^\/]+\/clip\/(?<mval>[^\/]+)/, "u");
-        let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/video\/(?<mval>[^\/]+)/, "u");
-        let ttop = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/(?<mval>[^\?]+)/, "u");
+        //https://www.twitch.tv/rutan25/clip/StrongSuperClipzBCouch-nOCmRF_fk4ROW8Lo?filter=clips&range=all&sort=time
+        let tclip = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/[^\/]+\/clip\/(?<mval>[^\/\?]+)/, "u");
+        let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/video\/(?<mval>[^\/\?]+)/, "u");
+        let ttop = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/(?<mval>[^\?\?]+)/, "u");
 
         function InitWS() {
             ws.onmessage = function (e) {
@@ -86,8 +87,8 @@
                         obj.style.width = "400px";
                         obj.style.height = "300px";
 
-                        media.Prop.originalHeight = obj.style.height - 0;
-                        media.Prop.originalWidth = obj.style.width - 0;
+                        media.Prop.originalWidth = 400;
+                        media.Prop.originalHeight = 300;
 
                         { // video duration adjustment
                             let mPos = media.Prop.Poss.length;
