@@ -1,0 +1,408 @@
+﻿<!DOCTYPE html>
+
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <style type="text/css">
+        body{
+            overflow: hidden;
+        }
+    </style>
+    <script type="text/javascript" src="./assets/te3port.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>    <script type="text/javascript">
+        let wsURI = "ws://localhost:" + port;
+        let ws = new WebSocket(wsURI);
+        let tclip = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/[^\/]+\/clip\/(?<mval>[^\/]+)/, "u");
+        let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/video\/(?<mval>[^\/]+)/, "u");
+        let ttop = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/(?<mval>[^\?]+)/, "u");
+
+        function InitWS() {
+            ws.onmessage = function (e) {
+                let media = JSON.parse(e.data);
+
+                if (media.Type != "CommandList") {
+
+                    setTimeout(function (x) {
+                        return function () {
+                            ViewMedia(x);
+                        }
+                    }(media), media.Prop.Delay);
+                }
+            };
+            ws.onerror = function (e) {
+                ws.close();
+            };
+        }
+
+        function ViewMedia(media) {
+            let viewer = document.getElementById('viewer');
+
+            let obj;
+
+
+            switch (media.TType) {
+
+                case "TwitchVideo":
+                    {
+                        obj = document.createElement("iframe");
+                        let url = "";
+
+
+                        // live stream
+                        if (media.TOptions["TwitchVideoTargetID"] != null && media.TOptions["TwitchVideoTargetID"] != "") {
+                            url = "https://player.twitch.tv/?channel="
+                                + media.TOptions["TwitchVideoTargetID"];
+                        } else if (media.TOptions["TwitchVideoRawUrl"] != null && media.TOptions["TwitchVideoRawUrl"] != "") {
+                            let u1m = url.match(tclip); // no embed clip url
+                            let u2m = url.match(tvod); // archive video
+                            let u3m = url.match(ttop); // streaming url
+
+                            if (u1m) {
+                                url = "https://clips.twitch.tv/embed?clip=" + u1m.groups.mval;
+                            } else if (u2m) {
+                                url = "https://player.twitch.tv/?video=" + u2m.groups.mval;
+                            } else if (u3m) {
+                                url = "https://player.twitch.tv/?channel=" + u3m.groups.mval;
+                            } else {
+                                url = media.TOptions["TwitchVideoRawUrl"];
+                            }
+
+                        }
+
+
+                        url += "&parent=dknkpp.github.io&autoplay=true";
+
+                        obj.setAttribute("frameborder", "0");
+
+
+                        obj.src = url;
+                        obj.style.position = "absolute";
+                        obj.style.visibility = "hidden";
+                        obj.style.width = "400px";
+                        obj.style.height = "300px";
+
+                        media.Prop.originalHeight = obj.style.height - 0;
+                        media.Prop.originalWidth = obj.style.width - 0;
+
+                        { // video duration adjustment
+                            let mPos = media.Prop.Poss.length;
+
+                            if (media.Prop.Poss[mPos - 1].JqEffect != "None") {
+                                mPos -= 1;
+                            }
+
+                            let pDur = 0;
+                            let aDur = 0;
+                            for (let i = 0; i < mPos; i++) {
+                                if (media.Prop.Poss[i].BoolSettings["AutoAdjustDurationForVideos"]) {
+                                    aDur += media.Prop.Poss[i].DecimalSettings["Duration"] - 0;
+                                } else {
+                                    pDur += media.Prop.Poss[i].DecimalSettings["Duration"] - 0;
+                                }
+                            }
+
+                            let diff = (media.TOptionDecimals["TwitchVideoDuration"]-0) * 1000 - pDur;
+
+                            if (diff > 0) {
+                                for (let i = 0; i < mPos; i++) {
+                                    if (media.Prop.Poss[i].BoolSettings["AutoAdjustDurationForVideos"]) {
+                                        media.Prop.Poss[i].DecimalSettings["Duration"]
+                                            = diff * media.Prop.Poss[i].DecimalSettings["Duration"] / (aDur + pDur);
+                                    }
+                                }
+                            }
+                        }
+
+                        viewer.appendChild(obj);
+
+                        PositionChanger(media, obj, 0);
+                        break;
+                    }
+                default:
+                    break;
+            }
+
+        }
+
+        function PositionChanger(_media, _obj, _posIndex) {
+
+            let windowHeight = window.innerHeight;
+            let windowWidth = document.body.clientWidth;
+            let sizeChange = false;
+            let rSizeHeight = _media.prevHeight - 0;
+            let rSizeWidth = _media.prevWidth - 0;
+
+            if (_posIndex == 0 || _media.Prop.Poss[_posIndex].BoolSettings["IgnoreSizeSettings"] != true) {
+                if (_media.Prop.Poss[_posIndex].BoolSettings["UseFixedSize"] == true) {
+                    rSizeHeight = _media.Prop.Poss[_posIndex].DecimalSettings["FixedHeight"];
+                    rSizeWidth = _media.Prop.Poss[_posIndex].DecimalSettings["FixedWidth"];
+                } else {
+                    rSizeHeight = (_media.Prop.originalHeight * (_media.Prop.Poss[_posIndex].DecimalSettings["HeightPercent"]-0) / 100);
+                    rSizeWidth = (_media.Prop.originalWidth * (_media.Prop.Poss[_posIndex].DecimalSettings["WidthPercent"]-0) / 100);
+                }
+                //writeLog(rSizeHeight + "/"+rSizeWidth);
+                sizeChange = true;
+            }
+
+            let posBaseX = 0;
+            let posBaseY = 0;
+
+            let JQO = {
+                "isSet": false,
+                "isRotate": false
+            };
+
+            let JQOPrev = {};
+
+
+            // position base
+            if (_media.Prop.Poss[_posIndex].PosBase.indexOf("Middle") != -1) {
+                posBaseY = (windowHeight - rSizeHeight) / 2;
+            } else if (_media.Prop.Poss[_posIndex].PosBase.indexOf("Bottom") != -1) {
+                posBaseY = (windowHeight - rSizeHeight);
+            }
+
+            if (_media.Prop.Poss[_posIndex].PosBase.indexOf("Center") != -1) {
+                posBaseX = (windowWidth - rSizeWidth) / 2;
+            } else if (_media.Prop.Poss[_posIndex].PosBase.indexOf("Right") != -1) {
+                posBaseX = (windowWidth - rSizeWidth);
+            }
+            
+            // position
+            if (_media.Prop.Poss[_posIndex].BoolSettings["IgnorePositionSettings"] != true) { 
+                let prevX;
+                if (_media.Prop.Poss[_posIndex].BoolSettings["IsRandomPosX"] == true) {
+                    prevX = GetRand(windowWidth - rSizeWidth);
+                } else if (_media.Prop.Poss[_posIndex].BoolSettings["UseRelativePositions"] == true) {
+                    prevX = _media.prevPosX - 0 + (_media.Prop.Poss[_posIndex].DecimalSettings["PositionX"] - 0);
+                } else {
+                    prevX = posBaseX - 0 + (_media.Prop.Poss[_posIndex].DecimalSettings["PositionX"] - 0);
+                }
+
+                let prevY;
+                if (_media.Prop.Poss[_posIndex].BoolSettings["IsRandomPosY"] == true) {
+                    prevY = GetRand(windowHeight - rSizeHeight);
+                } else if (_media.Prop.Poss[_posIndex].BoolSettings["UseRelativePositions"] == true) {
+                    prevY = _media.prevPosY - 0 + (_media.Prop.Poss[_posIndex].DecimalSettings["PositionY"] - 0);
+                } else {
+                    prevY = posBaseY - 0 + (_media.Prop.Poss[_posIndex].DecimalSettings["PositionY"] - 0);
+                }
+
+
+                _media.prevPosX = prevX;
+                _media.prevPosY = prevY;
+                if ( _posIndex == 0 || _media.Prop.Poss[_posIndex-1].BoolSettings["ToWarp"] == true) {
+                    _obj.style.left = prevX + "px";
+                    _obj.style.top = prevY + "px";
+                } else {
+                    JQOPrev.left = $(_obj).css("left");
+                    JQOPrev.top = $(_obj).css("top");
+
+                    JQO.left = prevX + "px";
+                    JQO.top = prevY + "px";
+                    JQO.isSet = true;
+                }
+            }
+
+            if (_media.Prop.Poss[_posIndex].BoolSettings["IgnoreOpacitySettings"] != true) {
+                if (_posIndex == 0 || _media.Prop.Poss[_posIndex - 1].BoolSettings["ToWarp"] == true) {
+                    _obj.style.opacity = _media.Prop.Poss[_posIndex].DecimalSettings["Opacity"] / 100;
+                } else {
+                    JQOPrev.opacity = $(_obj).css("opacity");
+
+                    JQO.opacity =  _media.Prop.Poss[_posIndex].DecimalSettings["Opacity"] / 100;
+                    JQO.isSet = true;
+                }
+                
+            }
+
+            if (sizeChange) {
+                if (_posIndex == 0 || _media.Prop.Poss[_posIndex - 1].BoolSettings["ToWarp"] == true) {
+                    _obj.style.height = rSizeHeight+"px";
+                    _obj.style.width = rSizeWidth+"px";
+                } else {
+                    JQOPrev.height = $(_obj).css("height");
+                    JQOPrev.width = $(_obj).css("width");
+
+                    JQO.height = rSizeHeight + "px";
+                    JQO.width = rSizeWidth + "px";
+                    JQO.isSet = true;
+                }
+            }
+
+            if (_media.Prop.Poss[_posIndex].JqEffect == "None") {
+                //_obj.style.visibility = "visible";
+            } else if (_media.Prop.Poss[_posIndex].JqEffect == "FadeIn") {
+                _obj.style.opacity = 0;
+                JQO.opacity = 1;
+                JQO.isSet = true;
+            } else if (_media.Prop.Poss[_posIndex].JqEffect == "FadeOut") {
+                JQO.opacity = 0;
+                JQO.isSet = true;
+            } else if (_media.Prop.Poss[_posIndex].JqEffect == "SlideUp") {
+                JQO.height = "0px";
+                JQO.isSet = true;
+            } else if (_media.Prop.Poss[_posIndex].JqEffect == "SlideDown") {
+                _obj.style.height = "0px";
+                JQO.height = rSizeHeight + "px";
+                JQO.isSet = true;
+            } else if (_media.Prop.Poss[_posIndex].JqEffect == "Rolling") {
+                JQO.isSet = true;
+                JQO.isRotate = true;
+            }
+            _obj.style.visibility = "visible";
+
+            if (JQO.isSet) {
+                delete JQO.isSet;
+                if (JQO.isRotate) {
+                    delete JQO.isRotate;
+
+                    let original = DeepCopy(JQOPrev);
+                    let target = DeepCopy(JQO);
+                    original.deg = 0;
+                    target.deg = 360;
+                    DeletePx(original);
+                    DeletePx(target);
+                    $(original).animate(
+                        target,
+                        {
+                            duration: _media.Prop.Poss[_posIndex].DecimalSettings["Duration"] - 0,
+                            progress: function () {
+                                let G = DeepCopy(this);
+                                AddPx(G);
+                                G.transform = 'rotate(' + this.deg + 'deg)';
+                                $(_obj).css(G);
+                            }
+                        }
+                    );
+                } else {
+                    $(_obj).animate(JQO, _media.Prop.Poss[_posIndex].DecimalSettings["Duration"] - 0);
+                }
+            }
+
+            //return;
+
+            if (_posIndex == _media.Prop.Poss.length - 1) {
+
+                if (_media.Prop.IsAutoEnd != true || ((_media.exType != "movie" && _media.exType != "audio"))) {
+
+                    setTimeout(
+                        function (_o) {
+                            return function () {
+                                CloseElement(_o);
+                            }
+                        }(_obj)
+                        , _media.Prop.Poss[_posIndex].DecimalSettings["Duration"] - 0);
+                }
+            } else {
+                setTimeout(
+                    function (_m, _o, _p) {
+                        return function () {
+                            PositionChanger(_m, _o, _p);
+                        }
+                    }(_media, _obj, _posIndex + 1)
+                    , _media.Prop.Poss[_posIndex].DecimalSettings["Duration"] - 0);
+            }
+
+        }
+
+        function DeletePx(obj) {
+            ['height', 'width', 'top', 'left'].forEach(e => {
+                if (obj[e] !== null) {
+                    let str = obj[e] + "";
+                    let p = str.indexOf('px');
+                    if (p != -1) {
+                        obj[e] = str.substring(0, p);
+                    }
+                }
+            }
+            );
+        }
+
+        function AddPx(obj) {
+            ['height', 'width', 'top', 'left'].forEach(e => {
+                if (obj[e] !== null) {
+                    let str = obj[e] + "";
+                    let p = str.indexOf('px');
+                    if (p == -1) {
+                        obj[e] = str + "px";
+                    }
+                }
+            }
+            );
+
+        }
+
+        function GetRand(num) {
+            if (num < 1) {
+                return 0;
+            }
+
+            return Math.floor(Math.random() * num);
+        }
+
+        function getExtType(filename) {
+            let fname = String(filename);
+            let pos = fname.lastIndexOf('.');
+            if (pos < 0) return "";
+
+            return fname.substring(pos).toLowerCase();
+        }
+
+        function CloseElement(obj) {
+            if (obj != null) {
+                let viewer = document.getElementById('viewer');
+                try {
+                    if (viewer.contains(obj)) {
+                        viewer.removeChild(obj);
+                    }
+                } catch (e) {
+
+                }
+                obj = null;
+            }
+        }
+
+        function DeepCopy(obj) {
+            return JSON.parse(JSON.stringify(obj));
+        }
+
+        function CloseElementWithJQEffect(obj, JQE, _dur) {
+            switch (JQE) {
+                case "FadeOut":
+                    $(obj).fadeOut(_dur - 0);
+                    break;
+                case "SlideUp":
+                    $(obj).slideUp(_dur - 0);
+                    break;
+            }
+            setTimeout(function(){ CloseElement(obj) }, _dur);
+        }
+
+        function writeLog(msg) {
+            console.log(msg);
+        }
+
+        function CheckWS() {
+            if (ws.readyState != 1) {
+                ws.close();
+                ws = null;
+                try {
+                    ws = new WebSocket(wsURI);
+                    InitWS();
+                } catch (e) {
+                }
+            }
+        }
+
+        window.onload = function () {
+            InitWS();
+        };
+        setInterval("CheckWS()", 3000);
+    </script>
+</head>
+<body>
+    <div id="viewer"></div>
+</body>
+</html>
