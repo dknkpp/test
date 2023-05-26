@@ -11,7 +11,11 @@
     </style>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>    <script type="text/javascript">
         const searchParams = new URLSearchParams(window.location.search);
-        let wsURI = "ws://localhost:" + searchParams.has('port');
+        if (!searchParams.get('port')) {
+            document.write("NEED PORT NUMBER!");
+        }
+        
+        let wsURI = "ws://localhost:" + searchParams.get('port');
         let ws = new WebSocket(wsURI);
         let tclip = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/[^\/]+\/clip\/(?<mval>[^\/]+)/, "u");
         let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/video\/(?<mval>[^\/]+)/, "u");
