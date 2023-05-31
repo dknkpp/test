@@ -9,7 +9,8 @@
             overflow: hidden;
         }
     </style>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>    <script type="text/javascript">
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+    <script type="text/javascript">
         const searchParams = new URLSearchParams(window.location.search);
         if (!searchParams.get('port')) {
             document.write("NEED PORT NUMBER!");
@@ -17,8 +18,10 @@
         
         let wsURI = "ws://localhost:" + searchParams.get('port');
         let ws = new WebSocket(wsURI);
-        //https://www.twitch.tv/rutan25/clip/StrongSuperClipzBCouch-nOCmRF_fk4ROW8Lo?filter=clips&range=all&sort=time
+        // https://www.twitch.tv/rutan25/clip/StrongSuperClipzBCouch-nOCmRF_fk4ROW8Lo?filter=clips&range=all&sort=time
         let tclip = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/[^\/]+\/clip\/(?<mval>[^\/\?]+)/, "u");
+        // https://clips.twitch.tv/IncredulousConcernedBaguetteShadyLulu-ktX5sSpmp8hd_4EW
+        let tclip2 = new RegExp(/^https?:\/\/clips\.?twitch\.tv\/(?<mval>[^\/\?]+)/, "u");
         let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/video\/(?<mval>[^\/\?]+)/, "u");
         let ttop = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/(?<mval>[^\?\?]+)/, "u");
 
@@ -43,36 +46,41 @@
         function ViewMedia(media) {
             let viewer = document.getElementById('viewer');
 
-            let obj;
-
+            if ((media.TOptions.TwitchVideoRawClip != "" || media.TOptions.TwitchVideoRawClip != null)) {
+                return;
+            }
 
             switch (media.TType) {
 
                 case "TwitchVideo":
                     {
+                        let _m = DeepCopy(media);
+                        let obj;
                         obj = document.createElement("iframe");
                         let url = "";
 
 
                         // live stream
-                        if (media.TOptions["TwitchVideoTargetID"] != null && media.TOptions["TwitchVideoTargetID"] != "") {
+                        if (_m.TOptions["TwitchVideoTargetID"] != null && _m.TOptions["TwitchVideoTargetID"] != "") {
                             url = "https://player.twitch.tv/?channel="
-                                + media.TOptions["TwitchVideoTargetID"];
-                        } else if (media.TOptions["TwitchVideoRawUrl"] != null && media.TOptions["TwitchVideoRawUrl"] != "") {
-                            let u1m = media.TOptions["TwitchVideoRawUrl"].match(tclip); // no embed clip url
-                            let u2m = media.TOptions["TwitchVideoRawUrl"].match(tvod); // archive video
-                            let u3m = media.TOptions["TwitchVideoRawUrl"].match(ttop); // streaming url
+                                + _m.TOptions["TwitchVideoTargetID"];
+                        } else if (_m.TOptions["TwitchVideoRawUrl"] != null && _m.TOptions["TwitchVideoRawUrl"] != "") {
+                            let u1m = _m.TOptions["TwitchVideoRawUrl"].match(tclip); // no embed clip url
+                            let u1m2 = _m.TOptions["TwitchVideoRawUrl"].match(tclip2); // no embed clip url
+                            let u2m = _m.TOptions["TwitchVideoRawUrl"].match(tvod); // archive video
+                            let u3m = _m.TOptions["TwitchVideoRawUrl"].match(ttop); // streaming url
 
-                            console.log(u1m);
 
                             if (u1m) {
                                 url = "https://clips.twitch.tv/embed?clip=" + u1m.groups.mval;
+                            } else if (u1m2) {
+                                url = "https://clips.twitch.tv/embed?clip=" + u1m2.groups.mval;
                             } else if (u2m) {
                                 url = "https://player.twitch.tv/?video=" + u2m.groups.mval;
                             } else if (u3m) {
                                 url = "https://player.twitch.tv/?channel=" + u3m.groups.mval;
                             } else {
-                                url = media.TOptions["TwitchVideoRawUrl"];
+                                url = _m.TOptions["TwitchVideoRawUrl"];
                             }
 
                         }
@@ -89,33 +97,33 @@
                         obj.style.width = "400px";
                         obj.style.height = "300px";
 
-                        media.Prop.originalWidth = 400;
-                        media.Prop.originalHeight = 300;
+                        _m.Prop.originalWidth = 400;
+                        _m.Prop.originalHeight = 300;
 
                         { // video duration adjustment
-                            let mPos = media.Prop.Poss.length;
+                            let mPos = _m.Prop.Poss.length;
 
-                            if (media.Prop.Poss[mPos - 1].JqEffect != "None") {
+                            if (_m.Prop.Poss[mPos - 1].JqEffect != "None") {
                                 mPos -= 1;
                             }
 
                             let pDur = 0;
                             let aDur = 0;
                             for (let i = 0; i < mPos; i++) {
-                                if (media.Prop.Poss[i].BoolSettings["AutoAdjustDurationForVideos"]) {
-                                    aDur += media.Prop.Poss[i].DecimalSettings["Duration"] - 0;
+                                if (_m.Prop.Poss[i].BoolSettings["AutoAdjustDurationForVideos"]) {
+                                    aDur += _m.Prop.Poss[i].DecimalSettings["Duration"] - 0;
                                 } else {
-                                    pDur += media.Prop.Poss[i].DecimalSettings["Duration"] - 0;
+                                    pDur += _m.Prop.Poss[i].DecimalSettings["Duration"] - 0;
                                 }
                             }
 
-                            let diff = (media.TOptionDecimals["TwitchVideoDuration"]-0) * 1000 - pDur;
+                            let diff = (_m.TOptionDecimals["TwitchVideoDuration"]-0) * 1000 - pDur;
 
                             if (diff > 0) {
                                 for (let i = 0; i < mPos; i++) {
-                                    if (media.Prop.Poss[i].BoolSettings["AutoAdjustDurationForVideos"]) {
-                                        media.Prop.Poss[i].DecimalSettings["Duration"]
-                                            = diff * media.Prop.Poss[i].DecimalSettings["Duration"] / (aDur + pDur);
+                                    if (_m.Prop.Poss[i].BoolSettings["AutoAdjustDurationForVideos"]) {
+                                        _m.Prop.Poss[i].DecimalSettings["Duration"]
+                                            = diff * _m.Prop.Poss[i].DecimalSettings["Duration"] / aDur;
                                     }
                                 }
                             }
@@ -123,7 +131,7 @@
 
                         viewer.appendChild(obj);
 
-                        PositionChanger(media, obj, 0);
+                        PositionChanger(_m, obj, 0);
                         break;
                     }
                 default:
