@@ -22,7 +22,7 @@
         let tclip = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/[^\/]+\/clip\/(?<mval>[^\/\?]+)/, "u");
         // https://clips.twitch.tv/IncredulousConcernedBaguetteShadyLulu-ktX5sSpmp8hd_4EW
         let tclip2 = new RegExp(/^https?:\/\/clips\.?twitch\.tv\/(?<mval>[^\/\?]+)/, "u");
-        let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/video\/(?<mval>[^\/\?]+)/, "u");
+        let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/videos\/(?<mval>[^\/\?]+)/, "u");
         let ttop = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/(?<mval>[^\?\?]+)/, "u");
 
         function InitWS() {
@@ -46,7 +46,7 @@
         function ViewMedia(media) {
             let viewer = document.getElementById('viewer');
 
-            if ((media.TOptions.TwitchVideoRawClip != "" || media.TOptions.TwitchVideoRawClip != null)) {
+            if (media.TOptions.hasOwnProperty('TwitchVideoRawClip')) {
                 return;
             }
 
