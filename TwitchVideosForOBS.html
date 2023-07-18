@@ -21,13 +21,15 @@
         // https://www.twitch.tv/rutan25/clip/StrongSuperClipzBCouch-nOCmRF_fk4ROW8Lo?filter=clips&range=all&sort=time
         let tclip = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/[^\/]+\/clip\/(?<mval>[^\/\?]+)/, "u");
         // https://clips.twitch.tv/IncredulousConcernedBaguetteShadyLulu-ktX5sSpmp8hd_4EW
-        let tclip2 = new RegExp(/^https?:\/\/clips\.?twitch\.tv\/(?<mval>[^\/\?]+)/, "u");
+        let tclip2 = new RegExp(/^https?:\/\/clips\.?twitch\.tv\/embed\?clip=(?<mval>[^\/\?]+)/, "u");
+        let tclip3 = new RegExp(/^https?:\/\/clips\.?twitch\.tv\/(?<mval>[^\/\?]+)/, "u");
         let tvod = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/videos\/(?<mval>[^\/\?]+)/, "u");
         let ttop = new RegExp(/^https?:\/\/w?w?w?\.?twitch\.tv\/(?<mval>[^\?\?]+)/, "u");
 
         function InitWS() {
             ws.onmessage = function (e) {
                 let media = JSON.parse(e.data);
+                //console.log(media);
 
                 if (media.Type != "CommandList") {
 
@@ -66,7 +68,8 @@
                                 + _m.TOptions["TwitchVideoTargetID"];
                         } else if (_m.TOptions["TwitchVideoRawUrl"] != null && _m.TOptions["TwitchVideoRawUrl"] != "") {
                             let u1m = _m.TOptions["TwitchVideoRawUrl"].match(tclip); // no embed clip url
-                            let u1m2 = _m.TOptions["TwitchVideoRawUrl"].match(tclip2); // no embed clip url
+                            let u1m2 = _m.TOptions["TwitchVideoRawUrl"].match(tclip2); // embed clip url 
+                            let u1m3 = _m.TOptions["TwitchVideoRawUrl"].match(tclip3); // no embed clip url
                             let u2m = _m.TOptions["TwitchVideoRawUrl"].match(tvod); // archive video
                             let u3m = _m.TOptions["TwitchVideoRawUrl"].match(ttop); // streaming url
 
@@ -75,6 +78,8 @@
                                 url = "https://clips.twitch.tv/embed?clip=" + u1m.groups.mval;
                             } else if (u1m2) {
                                 url = "https://clips.twitch.tv/embed?clip=" + u1m2.groups.mval;
+                            } else if (u1m3) {
+                                url = "https://clips.twitch.tv/embed?clip=" + u1m3.groups.mval;
                             } else if (u2m) {
                                 url = "https://player.twitch.tv/?video=" + u2m.groups.mval;
                             } else if (u3m) {
@@ -82,6 +87,8 @@
                             } else {
                                 url = _m.TOptions["TwitchVideoRawUrl"];
                             }
+                            
+                            console.log(url);
 
                         }
 
