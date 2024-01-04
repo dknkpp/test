@@ -47,7 +47,7 @@
 	        		addNewTag(true);
 	        	}
         	}else{
-        		
+        		numListStr = numListStr.replaceAll('_',',');
         		let numListParent = numListStr.split(',,');
         		for(let i = 0; i < numListParent.length; i++){
         			if(numListParent[i] === ""){
@@ -131,7 +131,7 @@
         		let score = getWeightFromTag(tElem, sArray);
         		totalScore += score;
         		tagScores.push(score);
-        		shareCode += sArray.join(',') + ',,';
+        		shareCode += sArray.join('_') + '__';
         	}
         	
         	for(let i = 0; i < tElems.length; i++){
