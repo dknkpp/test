@@ -118,29 +118,43 @@
         
         function buttonAddNewTag(){
         	addNewTag();
-        	tagReNumbering()
+        	tagReNumbering();
         }
         
         function buttonAddNewOpe(bElem){
         	let tElem = bElem.parentElement.parentElement;
+        	openOpes();
         	addNewOpe(tElem);
-        	tagReNumbering()
+        	tagReNumbering();
         }
         
         function buttonRemoveTagElem(bElem){
         	let tElem = bElem.parentElement.parentElement;
         	tElem.parentElement.removeChild(tElem);
-        	tagReNumbering()
+        	tagReNumbering();
         }
         
         function buttonRemoveOpeElem(bElem){
         	let oElem = bElem.parentElement.parentElement;
         	oElem.parentElement.removeChild(oElem);
-        	tagReNumbering()
+        	tagReNumbering();
+        }
+        function hideOpes(){
+        	let opes = document.getElementsByClassName("opeParent");
+        	for(i = 0; i < opes.length; i++){
+        		opes[i].style="display: none;";
+        	}
+        }
+        function openOpes(){
+        	let opes = document.getElementsByClassName("opeParent");
+        	for(i = 0; i < opes.length; i++){
+        		opes[i].style="display: block;";
+        	}
         }
 	</script>
 </head>
 <body>
+	<div><input type="button" value="オペレーション一覧を隠す" onclick="hideOpes()"><input type="button" value="オペレーション一覧を表示" onclick="openOpes()"></div>
 	<div id="parentElem"></div>
 	<div><input type="button" value="新規タグを追加" onclick="buttonAddNewTag();"></div>
 	<div style="display:none;">
