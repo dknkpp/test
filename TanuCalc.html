@@ -126,6 +126,18 @@
         	addNewOpe(tElem);
         	tagReNumbering()
         }
+        
+        function buttonRemoveTagElem(bElem){
+        	let tElem = bElem.parentElement.parentElement;
+        	tElem.parentElement.removeChild(tElem);
+        	tagReNumbering()
+        }
+        
+        function buttonRemoveOpeElem(bElem){
+        	let oElem = bElem.parentElement.parentElement;
+        	oElem.parentElement.removeChild(oElem);
+        	tagReNumbering()
+        }
 	</script>
 </head>
 <body>
@@ -137,10 +149,10 @@
 				<span class="probNum"></span><span> %</span> (<span class="score"></span>/<span class="totalScore"></span>)
 			</div>
 			<div>
-				<input type="button" value="新規オペレーションを追加" onclick="buttonAddNewOpe(this)">
+				<input type="button" value="新規オペレーションを追加" onclick="buttonAddNewOpe(this)"> <input type="button" value="このタグを削除" onclick="buttonRemoveTagElem(this)">
 			</div>
 			<div class="opeParent">
-				<div class="opeElem"><div>オペレーション<span class="opeCount">1</span></div>
+				<div class="opeElem"><div>オペレーション<span class="opeCount">1</span> <input type="button" value="削除" onclick="buttonRemoveOpeElem(this)"></div>
 				重みづけ<input class="opeWeight" type="number" value="10" autocomplete="off" max="10000" min="0" onchange="calcProbability();"></div>
 			</div>
 		</div>
