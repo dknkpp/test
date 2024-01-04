@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<title>TanuCalc</title>
+	<style type="text/css">
+		.tagElem, .origTagElem{
+			border: 4px solid black;
+			margin: 1em;
+			padding: 1em;
+		}
+		.opeElem{
+			border: 2px solid #AAA;
+			margin: 0.5em;
+			padding: 0.5em;
+		}
+	</style>
+	<script type="text/javascript">
+        const searchParam = new URLSearchParams(window.location.search);
+        
+        let tagNumber = getParam("tag");
+        let opeNumber = getParam("ope");
+        
+        if(tagNumber === null || tagNumber < 2){
+        	tagNumber = 2;
+        }else{
+        	tagNumber = Math.floor(tagNumber);
+        }
+        
+        if(opeNumber === null || opeNumber < 2){
+        	opeNumber = 2;
+        }else{
+        	opeNumber = Math.floor(opeNumber);
+        }
+        
+        let currentOpeNum = opeNumber;
+        
+        
+        window.onload = function(){
+        	for(let i = 0; i < tagNumber; i++){
+        		addNewTag();
+        	}
+        	
+        	tagReNumbering();
+        };
+
+        function getParam(type) {
+            if (!searchParam.has(type)) {
+                return null;
+            }
+            return searchParam.get(type);
+        }
+        
+        function addNewTag(){
+        	let pElem = document.getElementById("parentElem");
+        	let origTagElem = document.getElementsByClassName("origTagElem")[0];
+        	let cloneTagElem = origTagElem.cloneNode(true);
+			
+			cloneTagElem.setAttribute("class", "tagElem");
+			
+			for(let i = 1; i < currentOpeNum; i++){
+				addNewOpe(cloneTagElem);
+			}
+			pElem.appendChild(cloneTagElem);
+        }
+        
+        function addNewOpe(tagElem){
+        	let orig = document.getElementsByClassName("origTagElem")[0];
+        	let oElem = orig.getElementsByClassName("opeParent")[0];
+        	tagElem.appendChild(oElem.cloneNode(true));
+        }
+        
+        function tagReNumbering(){
+        	let tElems = document.getElementsByClassName("tagElem");
+        	for(let i = 0; i < tElems.length; i++){
+        		let tElem = tElems[i];
+        		tElem.getElementsByClassName("tagCount")[0].innerHTML = 1+i;
+        		let oElems = tElem.getElementsByClassName("opeElem");
+        		for(let j = 0; j < oElems.length; j++){
+        			oElems[j].getElementsByClassName("opeCount")[0].innerHTML = 1+j;
+        		}
+        	}
+        	calcProbability();
+        }
+        
+        function calcProbability(){
+        	let totalScore = 0;
+        	let tagScores = new Array();
+        	
+        	let tElems = document.getElementsByClassName("tagElem");
+        	for(let i = 0; i < tElems.length; i++){
+        		let tElem = tElems[i];
+        		let score = getWeightFromTag(tElem);
+        		totalScore += score;
+        		tagScores.push(score);
+        	}
+        	
+        	for(let i = 0; i < tElems.length; i++){
+        		let tElem = tElems[i];
+        		let pElem = tElem.getElementsByClassName("probNum")[0];
+        		pElem.innerHTML = Math.floor(10000 * tagScores[i] / totalScore)/100;
+        		tElem.getElementsByClassName("score")[0].innerHTML = tagScores[i];
+        		tElem.getElementsByClassName("totalScore")[0].innerHTML = totalScore;
+        	}
+        	
+        	
+        }
+        
+        function getWeightFromTag(tagElem){
+        	let score = 0;
+        	let oElems = tagElem.getElementsByClassName("opeWeight");
+        	for(let i = 0; i < oElems.length; i++){
+        		score += oElems[i].value - 0;
+        	}
+        	return score;
+        }
+        
+        function buttonAddNewTag(){
+        	addNewTag();
+        	tagReNumbering()
+        }
+        
+        function buttonAddNewOpe(bElem){
+        	let tElem = bElem.parentElement.parentElement;
+        	addNewOpe(tElem);
+        	tagReNumbering()
+        }
+	</script>
+</head>
+<body>
+	<div id="parentElem"></div>
+	<div><input type="button" value="新規タグを追加" onclick="buttonAddNewTag();"></div>
+	<div style="display:none;">
+		<div class="origTagElem">
+			<div class="probability"><div>タグ<span class="tagCount">1</span></div>
+				<span class="probNum"></span><span> %</span> (<span class="score"></span>/<span class="totalScore"></span>)
+			</div>
+			<div>
+				<input type="button" value="新規オペレーションを追加" onclick="buttonAddNewOpe(this)">
+			</div>
+			<div class="opeParent">
+				<div class="opeElem"><div>オペレーション<span class="opeCount">1</span></div>
+				重みづけ<input class="opeWeight" type="number" value="10" autocomplete="off" max="10000" min="0" onchange="calcProbability();"></div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
