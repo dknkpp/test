@@ -21,6 +21,7 @@
         
         let tagNumber = getParam("tag");
         let opeNumber = getParam("ope");
+        let numListStr = getParam("nums");
         
         if(tagNumber === null || tagNumber < 2){
         	tagNumber = 2;
@@ -36,10 +37,35 @@
         
         let currentOpeNum = opeNumber;
         
+        let selfURL = location.protocol + '//'
+        	+ location.host + location.pathname;
         
         window.onload = function(){
-        	for(let i = 0; i < tagNumber; i++){
-        		addNewTag();
+        	
+        	if(numListStr === null){
+	        	for(let i = 0; i < tagNumber; i++){
+	        		addNewTag(true);
+	        	}
+        	}else{
+        		
+        		let numListParent = numListStr.split(',,');
+        		for(let i = 0; i < numListParent.length; i++){
+        			if(numListParent[i] === ""){
+        				continue;
+        			}
+        			let numListChild = numListParent[i].split(',');
+        			
+        			if(numListChild.length > 0){
+        				let tElem = addNewTag(false);
+        				
+        				for(let j = 0; j < numListChild.length; j++){
+        					let oElem = addNewOpe(tElem);
+        					oElem.getElementsByClassName('opeWeight')[0].value = numListChild[j] - 0;
+        				}
+        				
+        			}
+        		}
+        		
         	}
         	
         	tagReNumbering();
@@ -52,23 +78,31 @@
             return searchParam.get(type);
         }
         
-        function addNewTag(){
+        function addNewTag(cFlag){
         	let pElem = document.getElementById("parentElem");
         	let origTagElem = document.getElementsByClassName("origTagElem")[0];
         	let cloneTagElem = origTagElem.cloneNode(true);
 			
 			cloneTagElem.setAttribute("class", "tagElem");
 			
-			for(let i = 1; i < currentOpeNum; i++){
-				addNewOpe(cloneTagElem);
+			if(cFlag){
+				for(let i = 1; i < currentOpeNum; i++){
+					addNewOpe(cloneTagElem);
+				}
+			}else{
+				let cOpe = cloneTagElem.getElementsByClassName('opeParent')[0];
+				cloneTagElem.removeChild(cOpe);
 			}
 			pElem.appendChild(cloneTagElem);
+			return cloneTagElem;
         }
         
         function addNewOpe(tagElem){
         	let orig = document.getElementsByClassName("origTagElem")[0];
         	let oElem = orig.getElementsByClassName("opeParent")[0];
-        	tagElem.appendChild(oElem.cloneNode(true));
+        	let oClone = oElem.cloneNode(true);
+        	tagElem.appendChild(oClone);
+        	return oClone;
         }
         
         function tagReNumbering(){
@@ -89,11 +123,15 @@
         	let tagScores = new Array();
         	
         	let tElems = document.getElementsByClassName("tagElem");
+        	let shareCode = "";
+        	
         	for(let i = 0; i < tElems.length; i++){
         		let tElem = tElems[i];
-        		let score = getWeightFromTag(tElem);
+        		let sArray = new Array();
+        		let score = getWeightFromTag(tElem, sArray);
         		totalScore += score;
         		tagScores.push(score);
+        		shareCode += sArray.join(',') + ',,';
         	}
         	
         	for(let i = 0; i < tElems.length; i++){
@@ -104,20 +142,21 @@
         		tElem.getElementsByClassName("totalScore")[0].innerHTML = totalScore;
         	}
         	
-        	
+        	document.getElementsByClassName('shareURL')[0].value = selfURL + '?nums=' + shareCode;
         }
         
-        function getWeightFromTag(tagElem){
+        function getWeightFromTag(tagElem, sArray){
         	let score = 0;
         	let oElems = tagElem.getElementsByClassName("opeWeight");
         	for(let i = 0; i < oElems.length; i++){
         		score += oElems[i].value - 0;
+        		sArray.push(oElems[i].value - 0);
         	}
         	return score;
         }
         
         function buttonAddNewTag(){
-        	addNewTag();
+        	addNewTag(true);
         	tagReNumbering();
         }
         
@@ -154,7 +193,12 @@
 	</script>
 </head>
 <body>
-	<div><input type="button" value="オペレーション一覧を隠す" onclick="hideOpes()"><input type="button" value="オペレーション一覧を表示" onclick="openOpes()"></div>
+	<div>
+		<input type="button" value="オペレーション一覧を隠す" onclick="hideOpes()">
+		<input type="button" value="オペレーション一覧を表示" onclick="openOpes()">
+		<span>共有用アドレス</span>
+		<input class="shareURL" type="text" value="" size="100" onclick="this.select()">
+	</div>
 	<div id="parentElem"></div>
 	<div><input type="button" value="新規タグを追加" onclick="buttonAddNewTag();"></div>
 	<div style="display:none;">
