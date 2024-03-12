@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>GIF SEARCH SERVICE BY TENOR</title>
+    <style type="text/css">
+    body{
+        position: relative;
+    }
+    #hoption {
+        font-size: 0.9em;
+    }
+    #soption {
+        display: none;
+    }
+    #contextMenu{
+        display: none;
+        position: absolute;
+        width: 10em;
+        border: 1px solid black;
+        padding: 0.1em;
+        top: 0;
+        left: 0;
+        background-color: white;
+    }
+    #contextMenu div:nth-child(even){
+        background-color: #F0F0F8;
+    }
+    #contextMenu div:nth-child(odd){
+        background-color: #E0E0E8;
+    }
+    #contextMenu div{
+        font-size: 0.8em;
+        text-align: center;
+    }
+    h1.contextTitle{
+        font-size: 0.7em;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        margin-top: 0px;
+        margin-bottom: 0px;
+        text-align: center;
+        background-color: #404040;
+        color: #F0F0FF;
+    }
+    header{
+        position: fixed;
+        top: 0;
+        width: 100%;
+        padding-bottom: 0.4em;
+        padding-top: 0.4em;
+        background-color: white;
+    }
+    footer{
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        height: 1.2em;
+        padding-bottom: 0.4em;
+        padding-top: 0.4em;
+        background-color: white;
+        border-top: 1px solid black;
+    }
+    div#image{
+        padding-bottom: 18em;
+    }
+    </style>
+<script>
+const searchParam       = new URLSearchParams(window.location.search);
+const API_KEY           = "AIzaSyC_u-S10P9T6qwpgcDX-IKCPZj4EvjbdVU";
+const CLIENT_KEY        = "TE3_SEARTH_TENOR_" + getParam('user');
+const LMT               = 20;
+const SEARCH_LOCK_TIME  = 600;
+const targetSizeList    = ['gif', 'mp4', 'webm'];
+
+let search_lock = false;
+let tid         = null;
+let prev_word   = "";
+let iclick      = false;
+
+function httpGetAsync(theUrl, callback)
+{
+    let xmlHttp = new XMLHttpRequest();
+
+    xmlHttp.onreadystatechange = function()
+    {
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+        {
+            callback(xmlHttp.responseText);
+        }
+    }
+
+    xmlHttp.open("GET", theUrl, true);
+
+    xmlHttp.send(null);
+
+    return;
+}
+
+
+function tenorCallback_search(responsetext)
+{
+
+    let response_objects = JSON.parse(responsetext);
+
+    let gifs = response_objects["results"];
+    console.log(response_objects);
+
+    let div = document.getElementById('image');
+    
+    div.innerHTML = "";
+    
+    for(let i = 0; i < gifs.length; i++){
+    	let img = document.createElement('img');
+    	img.src = gifs[i]['media_formats']['tinygif']['url'];
+    	img.onclick = function(v){
+    	    return function(e){
+    	    	openContextMenu(v, e);
+    	    };
+    	}(gifs[i]);
+    	div.appendChild(img);
+    }
+
+    return;
+
+}
+
+
+function searchStart(fm){
+    if(!search_lock){
+        let search_term     = encodeURIComponent(fm.q.value);
+        
+        if(search_term == prev_word || search_term == "")
+            return;
+        
+        let search_country  = encodeURIComponent(fm.country.value);
+        let search_locale   = encodeURIComponent(fm.locale.value);
+        let search_random   = fm.random.checked? 'true': 'false';
+        let search_url = "https://tenor.googleapis.com/v2/search?q=" + search_term + "&key=" +
+                API_KEY +"&client_key=" + CLIENT_KEY +  "&limit=" + LMT + "&country=" + search_country + "&locale=" + 
+                search_locale + "&random=" + search_random;
+
+        httpGetAsync(search_url,tenorCallback_search);
+        prev_word = search_term;
+    }
+}
+
+
+function searchTenor(fm){
+    if(fm.q.value === '')
+        return false;
+    
+    search_lock = true;
+    
+    if(tid !== null){
+        clearTimeout(tid);
+        tid = null;
+    }
+    
+    tid = setTimeout(function(){search_lock = false;}, SEARCH_LOCK_TIME);
+    setTimeout(function(_fm){ return function(){ searchStart(_fm) }}(fm),SEARCH_LOCK_TIME+10);
+    
+    return false;
+}
+
+function toggleOption(){
+    let op = document.getElementById('soption');
+    op.style.display = op.style.display.toLowerCase() == 'block'? 'none': 'block';
+    return false;
+}
+
+function setValue(v){
+    for(let i = 0; i < targetSizeList.length; i++){
+        setValueCheck(v, targetSizeList[i]);
+        setValueCheck(v, "nano"+targetSizeList[i]);
+        setValueCheck(v, "tiny"+targetSizeList[i]);
+    }
+}
+
+function setValueCheck(v, key){
+    if(v.media_formats.hasOwnProperty(key)){
+        document.getElementById(key).href = v.media_formats[key].url;
+    	document.getElementById(key).style.visibility = 'visible';
+    }else{
+    	document.getElementById(key).style.visibility = 'hidden';
+    }
+}
+
+function openContextMenu(v, e){
+    let cmenu = document.getElementById('contextMenu');
+    setValue(v);
+    cmenu.style.display = 'block';
+    cmenu.style.left = (15 + e.pageX) + "px";
+    cmenu.style.top = (15 + e.pageY) + "px";
+    console.log(v);
+    iclick = true;
+    return false;
+}
+
+function hideContextMenu(force){
+    if(force || !iclick){
+        let cmenu = document.getElementById('contextMenu');
+        cmenu.style.display = 'none';
+    }
+    iclick = false;
+    return true;
+}
+
+function getParam(type) {
+    if (!searchParam.has(type)) {
+        return "";
+    }
+    return searchParam.get(type);
+}
+
+
+</script>
+</head>
+<body onclick="return hideContextMenu(false);">
+<header>
+<form>
+SEARCH: <input type="text" name="q" onchange="return searchTenor(this.form);" onkeyup="return searchTenor(this.form);">
+<h1 id="hoption"><a href="#" onclick="return toggleOption();">SEARCH OPTION</a></h1>
+<div id="soption">
+country: <input type="text" name="country" value="JP"><br>
+locale: <input type="text" name="locale" value="ja_JP"><br>
+<label><input type="checkbox" name="random"> random sorted</label>
+</div>
+</form>
+</header>
+<div id="image">
+</div>
+
+<footer>
+follow the <a href="https://tenor.com/ja/legal-terms" target="_blank">legal terms of Tenor</a>
+</footer>
+
+<div id="contextMenu" onclick="iclick = true;">
+<h1 class="contextTitle">normal size</h1>
+<div><a id="gif" download target="_blank">gif</a></div>
+<div><a id="mp4" download target="_blank">mp4</a></div>
+<div><a id="webm" download target="_blank">webm</a></div>
+<h1 class="contextTitle">tiny size</h1>
+<div><a id="tinygif" download target="_blank">gif</a></div>
+<div><a id="tinymp4" download target="_blank">mp4</a></div>
+<div><a id="tinywebm" download target="_blank">webm</a></div>
+<h1 class="contextTitle">nano size</h1>
+<div><a id="nanogif" download target="_blank">gif</a></div>
+<div><a id="nanomp4" download target="_blank">mp4</a></div>
+<div><a id="nanowebm" download target="_blank">webm</a></div>
+</div>
+</body>
+</html>
