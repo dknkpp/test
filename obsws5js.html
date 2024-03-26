@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+	<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/obs-websocket-js"></script>
+	<script type="text/javascript">
+const searchParam = new URLSearchParams(window.location.search);
+
+const obsAddr	= getParam('obsAddr')	|| 'localhost';
+const obsPort	= getParam('obsPort')	|| 4455;
+const obsws5pwd	= getParam('obsPwd')	|| 'W7FjIl7f5Z31fv2Z';
+
+const obsOn		= getParam('obs')? true: false || true;
+//const obsOn		= getParam('obs')? true: false;
+
+
+const tanuAddr	= getParam('tanuAddr')	|| 'localhost';
+const tanuPort	= getParam('tanuPort')	|| 56543;
+
+const TanuWSURI = "ws://"+tanuAddr+":"+tanuPort;
+
+let Tanu;
+let obs = new OBSWebSocket();
+let obsConnected = false;
+let obsInterval = null;
+
+obs.on('CurrentProgramSceneChanged', (e) => {console.log(e)});
+obs.on('StreamStateChanged', (e) => {console.log(e)});
+
+let sceneList = [];
+let tanuCommandList = [];
+let OBSState = {
+	'OBS_WEBSOCKET_OUTPUT_STARTED': 'Streaming Start',
+	'OBS_WEBSOCKET_OUTPUT_STOPPED': 'Streaming End'
+};
+
+
+function StartTanu(){
+	
+	if(!obsOn){
+		document.getElementById('header_obs').style.display = "none";
+	}
+	
+	Tanu = new WebSocket(TanuWSURI);
+	
+	Tanu.onmessage = function(e){
+		let d = JSON.parse(e.data);
+		if(d.Type === 'CommandList'){
+			tanuCommandList = d.Commands;
+			console.log(tanuCommandList);
+			if(tanuCommandList.length > 0){
+				let t = document.getElementById('content_tanu');
+				t.innerHTML = "";
+				
+				for(let i in tanuCommandList){
+					let b = document.createElement('button');
+					b.appendChild(document.createTextNode(tanuCommandList[i]));
+					b.addEventListener('click',function(){
+						sendTanu(tanuCommandList[i]);
+					});
+					t.appendChild(b);
+				}
+				
+				document.getElementById('header_tanu').click();
+			}
+		}
+	}
+	
+	Tanu.onopen = function(){
+		obsInterval = setInterval(StartOBSWS5, 500);
+	}
+}
+
+async function StartOBSWS5(){
+	if(obsOn && !obsConnected){
+		try{
+			await obs.connect('ws://'+obsAddr+':'+obsPort, obsws5pwd).then((e) => {
+				if(obs.socket.readyState === 1){
+					obsConnected = true;
+				}
+			});
+
+			obs.call('GetSceneList').then( (e) => {
+					sceneList = e.scenes;
+					console.log(sceneList);
+					
+					console.log(obs);
+					
+					createOBSField();
+				});
+				
+			obs.socket.onclose = () => {
+				obsConnected = false;
+				if(obsInterval !== null){
+					clearInterval(obsInterval);
+				}
+				obsInterval = setInterval(StartOBSWS5, 3000);
+			};
+		}catch (e){console.log(e)}
+	}
+}
+
+// {"d":{"eventData":{"sceneName":"シーン 2","sceneUuid":"68499160-7c16-45bf-8043-54d5c7dd6787"},"eventIntent":4,"eventType":"CurrentProgramSceneChanged"},"op":5}
+// {"d":{"eventData":{"outputActive":true,"outputState":"OBS_WEBSOCKET_OUTPUT_STARTED"},"eventIntent":64,"eventType":"StreamStateChanged"},"op":5}
+// {"d":{"eventData":{"outputActive":false,"outputState":"OBS_WEBSOCKET_OUTPUT_STOPPED"},"eventIntent":64,"eventType":"StreamStateChanged"},"op":5}
+
+
+
+function getParam(type) {
+	if (!searchParam.has(type)) {
+		return null;
+	}
+	return searchParam.get(type);
+}
+
+function getStorage(key) {
+	return localStorage.getItem(key);
+}
+
+function setStorage(key, val) {
+	localStorage.setItem(key, val);
+}
+
+function sendTanu(commandName){
+	try{
+		let rObj = {
+			'Type': 'Command',
+			'CommandName': commandName,
+		};
+		Tanu.send(JSON.stringify(rObj));
+	}catch{}
+}
+
+function setClone(orig, leg){
+	let clone = orig.cloneNode(true);
+	clone.getElementsByTagName('legend')[0].appendChild(document.createTextNode(leg));
+	
+	if(tanuCommandList.length > 0){
+		let cl = clone.getElementsByClassName('checkboxList')[0];
+		for(let t in tanuCommandList){
+			let lb = document.createElement('label');
+			let cb = document.createElement('input');
+			cb.setAttribute('type', 'checkbox');
+			cb.dataset.tanu = tanuCommandList[t];
+			cb.addEventListener('change', function(){
+				console.log(cb.dataset.tanu);
+			});
+			lb.appendChild(cb);
+			lb.appendChild(document.createTextNode(tanuCommandList[t]));
+			cl.appendChild(lb);
+		}
+	}
+	return clone;
+	
+}
+
+function createOBSField(){
+	let orig = document.getElementById('tanuListContainer').getElementsByTagName('div')[0];
+	let o = document.getElementById('fix_content');
+	o.innerHTML = "";
+	for(let i in OBSState){
+		let clone = setClone(orig, OBSState[i]);
+		o.appendChild(clone);
+	}
+	o = document.getElementById('scene_content');
+	o.innerHTML = "";
+	for(let i in sceneList){
+		let clone = setClone(orig, sceneList[i].sceneName);
+		o.appendChild(clone);
+	}
+}
+
+function CheckTanu(){
+	try{
+		if(Tanu.readyState != 1){
+			Tanu.close();
+			Tanu = null;
+			try{
+				StartTanu();
+			}catch{}
+		}
+	}catch{}
+}
+
+setInterval("CheckTanu()", 3000);
+
+window.onload = function(){
+	let h_t = document.getElementById('header_tanu');
+	let h_o = document.getElementById('header_obs');
+	let c_t = document.getElementById('content_tanu');
+	let c_o = document.getElementById('content_obs');
+	
+	h_t.addEventListener('click', () => {
+		c_t.style.display = 'block';
+		c_o.style.display = 'none';
+		
+		h_t.style.backgroundColor = '#F0F0FF';
+		h_o.style.backgroundColor = '#FFFFFF';
+	});
+	
+	h_o.addEventListener('click', () => {
+		c_t.style.display = 'none';
+		c_o.style.display = 'block';
+		
+		h_t.style.backgroundColor = '#FFFFFF';
+		h_o.style.backgroundColor = '#F0F0FF';
+		createOBSField();
+	});
+	
+	StartTanu();
+}
+
+	</script>
+	<style type="text/css">
+#header span{
+	border: 1px solid black;
+	padding-left: 3px;
+	padding-right: 3px;
+	margin: 1px;
+}
+body{
+	padding: 2px;
+	margin: 0px;
+}
+.frame{
+	border: 1px solid black;
+	height: 100%;
+}
+#content{
+	width: 100%;
+	height: 100%;
+}
+#content_tanu, #content_obs{
+	width: 100%;
+	height: 100%;
+	float: left;
+}
+#content button{
+	height: 80px;
+	width: 80px;
+	margin: 10px;
+	float: left;
+}
+#tanuList{
+	clear: both;
+}
+#tanuListContainer{
+	display: none;
+}
+	</style>
+</head>
+<body>
+<div id="header">
+<span id="header_tanu">TanuEsa</span><span id="header_obs">OBS</span>
+</div>
+
+<div id="content">
+	<div id="content_tanu" class="frame"></div>
+	<div id="content_obs" class="frame">
+		<div id="fix_content"></div>
+		<div id="scene_content"></div>
+	</div>
+</div>
+
+<div id="tanuListContainer">
+	<div class="tanuList">
+		<form>
+			<fieldset>
+				<legend></legend>
+			<div class="checkboxList">
+			</div>
+			</fieldset>
+		</form>
+	</div>
+</div>
+
+</body>
+</html>
