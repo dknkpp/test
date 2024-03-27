@@ -10,8 +10,8 @@ const obsAddr	= getParam('obsAddr')	|| 'localhost';
 const obsPort	= getParam('obsPort')	|| 4455;
 const obsws5pwd	= getParam('obsPwd')	|| 'W7FjIl7f5Z31fv2Z';
 
-const obsOn		= getParam('obs')? true: false || true;
-//const obsOn		= getParam('obs')? true: false;
+const obsOn		= getParam('obsOn')? true: false || true;
+//const obsOn		= getParam('obsOn')? true: false;
 
 
 const tanuAddr	= getParam('tanuAddr')	|| 'localhost';
@@ -19,13 +19,63 @@ const tanuPort	= getParam('tanuPort')	|| 56543;
 
 const TanuWSURI = "ws://"+tanuAddr+":"+tanuPort;
 
+const BGColorEnabled = 'white';
+const BGColorDisabled = '#A0A0A8';
+
 let Tanu;
 let obs = new OBSWebSocket();
 let obsConnected = false;
 let obsInterval = null;
+let obsPause = false;
 
-obs.on('CurrentProgramSceneChanged', (e) => {console.log(e)});
-obs.on('StreamStateChanged', (e) => {console.log(e)});
+let obsEventStates = {};
+let obsEventScene = {};
+
+obs.on('StreamStateChanged', (e) => {
+	SSC(e);
+});
+
+function SSC(e){
+	if(obsPause)
+		return;
+	loadOBSEvent();
+	let sNameRaw = e.outputState;
+	if(OBSState.hasOwnProperty(sNameRaw)){
+		let sName = OBSState[sNameRaw];
+		if(obsEventStates.hasOwnProperty(sName)){
+			console.log(obsEventStates[sName]);
+			for(let i = 0; i < obsEventStates[sName].length; i++){
+				sendTanu(obsEventStates[sName][i]);
+			}
+		}
+	}
+	console.log(e);
+}
+
+obs.on('CurrentProgramSceneChanged', (e) => {
+	CPSC(e);
+});
+
+function CPSC(e){
+	if(obsPause)
+		return;
+	loadOBSEvent();
+	let sName = e.sceneName;
+	if(obsEventScene.hasOwnProperty(sName)){
+		console.log(obsEventScene[sName]);
+		for(let i = 0; i < obsEventScene[sName].length; i++){
+			sendTanu(obsEventScene[sName][i]);
+		}
+	}
+	console.log(e);
+}
+
+
+// {"d":{"eventData":{"outputActive":true,"outputState":"OBS_WEBSOCKET_OUTPUT_STARTED"},"eventIntent":64,"eventType":"StreamStateChanged"},"op":5}
+// {"d":{"eventData":{"outputActive":false,"outputState":"OBS_WEBSOCKET_OUTPUT_STOPPED"},"eventIntent":64,"eventType":"StreamStateChanged"},"op":5}
+// {"d":{"eventData":{"sceneName":"シーン 2","sceneUuid":"68499160-7c16-45bf-8043-54d5c7dd6787"},"eventIntent":4,"eventType":"CurrentProgramSceneChanged"},"op":5}
+
+
 
 let sceneList = [];
 let tanuCommandList = [];
@@ -100,11 +150,6 @@ async function StartOBSWS5(){
 	}
 }
 
-// {"d":{"eventData":{"sceneName":"シーン 2","sceneUuid":"68499160-7c16-45bf-8043-54d5c7dd6787"},"eventIntent":4,"eventType":"CurrentProgramSceneChanged"},"op":5}
-// {"d":{"eventData":{"outputActive":true,"outputState":"OBS_WEBSOCKET_OUTPUT_STARTED"},"eventIntent":64,"eventType":"StreamStateChanged"},"op":5}
-// {"d":{"eventData":{"outputActive":false,"outputState":"OBS_WEBSOCKET_OUTPUT_STOPPED"},"eventIntent":64,"eventType":"StreamStateChanged"},"op":5}
-
-
 
 function getParam(type) {
 	if (!searchParam.has(type)) {
@@ -128,12 +173,14 @@ function sendTanu(commandName){
 			'CommandName': commandName,
 		};
 		Tanu.send(JSON.stringify(rObj));
-	}catch{}
+		console.log('Tanu send: '+commandName);
+	}catch (e){console.log(e)}
 }
 
-function setClone(orig, leg){
+function setClone(orig, leg, checkedList){
 	let clone = orig.cloneNode(true);
 	clone.getElementsByTagName('legend')[0].appendChild(document.createTextNode(leg));
+	clone.getElementsByTagName('legend')[0].dataset.tanu = leg;
 	
 	if(tanuCommandList.length > 0){
 		let cl = clone.getElementsByClassName('checkboxList')[0];
@@ -142,8 +189,13 @@ function setClone(orig, leg){
 			let cb = document.createElement('input');
 			cb.setAttribute('type', 'checkbox');
 			cb.dataset.tanu = tanuCommandList[t];
+			
+			if(checkedList.hasOwnProperty(leg) && checkedList[leg].includes(tanuCommandList[t])){
+				cb.setAttribute('checked', true);
+			}
+			
 			cb.addEventListener('change', function(){
-				console.log(cb.dataset.tanu);
+				saveOBSEvents();
 			});
 			lb.appendChild(cb);
 			lb.appendChild(document.createTextNode(tanuCommandList[t]));
@@ -154,18 +206,77 @@ function setClone(orig, leg){
 	
 }
 
+function loadOBSEvent(){
+	let fix = getStorage('fixEvent');
+	if(fix !== null){
+		try{
+			obsEventStates = JSON.parse(fix);
+		}catch(e){console.log(e)}
+	}
+	
+	let scene = getStorage('sceneEvent');
+	if(scene !== null){
+		try{
+			obsEventScene = JSON.parse(scene);
+		}catch(e){console.log(e)}
+	}
+	
+	obsPause = getStorage('obsPause') === 'true'? true: false;
+	op.opc.checked = obsPause;
+	obsPauseStateChange();
+}
+
+function saveOBSEvents(){
+	let fix = document.getElementById('fix_content').getElementsByTagName('form');
+	let scene = document.getElementById('scene_content').getElementsByTagName('form');
+	
+	let fixObj = {};
+	for(let fobj = 0; fobj < fix.length; fobj++){
+		let f = fix[fobj];
+		let leg = f.getElementsByTagName('legend')[0].dataset.tanu;
+		fixObj[leg] = [];
+		let cboxs = f.getElementsByTagName('input');
+		for(let c = 0; c < cboxs.length; c++){
+			let cb = cboxs[c];
+			if(cb.getAttribute('type').toLowerCase() === 'checkbox' && cb.checked){
+				fixObj[leg].push(cb.dataset.tanu);
+			}
+		}
+	}
+	console.log(JSON.stringify(fixObj));
+	setStorage('fixEvent', JSON.stringify(fixObj));
+	
+	let sceneObj = {};
+	for(let fobj = 0; fobj < scene.length; fobj++){
+		let f = scene[fobj];
+		let leg = f.getElementsByTagName('legend')[0].dataset.tanu;
+		sceneObj[leg] = [];
+		let cboxs = f.getElementsByTagName('input');
+		for(let c = 0; c < cboxs.length; c++){
+			let cb = cboxs[c];
+			if(cb.getAttribute('type').toLowerCase() === 'checkbox' && cb.checked){
+				sceneObj[leg].push(cb.dataset.tanu);
+			}
+		}
+	}
+	console.log(JSON.stringify(sceneObj));
+	setStorage('sceneEvent', JSON.stringify(sceneObj));
+	
+	
+}
+
 function createOBSField(){
 	let orig = document.getElementById('tanuListContainer').getElementsByTagName('div')[0];
 	let o = document.getElementById('fix_content');
 	o.innerHTML = "";
 	for(let i in OBSState){
-		let clone = setClone(orig, OBSState[i]);
+		let clone = setClone(orig, OBSState[i], obsEventStates);
 		o.appendChild(clone);
 	}
 	o = document.getElementById('scene_content');
 	o.innerHTML = "";
 	for(let i in sceneList){
-		let clone = setClone(orig, sceneList[i].sceneName);
+		let clone = setClone(orig, sceneList[i].sceneName, obsEventScene);
 		o.appendChild(clone);
 	}
 }
@@ -183,6 +294,17 @@ function CheckTanu(){
 }
 
 setInterval("CheckTanu()", 3000);
+
+function obsPauseStateChange(){
+	obsPause = document.op.opc.checked;
+	let f_c = document.getElementById('fix_content');
+	let s_c = document.getElementById('scene_content');
+	
+	f_c.style.backgroundColor = obsPause? BGColorDisabled: BGColorEnabled;
+	s_c.style.backgroundColor = obsPause? BGColorDisabled: BGColorEnabled;
+	
+	setStorage('obsPause', ''+obsPause);
+}
 
 window.onload = function(){
 	let h_t = document.getElementById('header_tanu');
@@ -206,7 +328,7 @@ window.onload = function(){
 		h_o.style.backgroundColor = '#F0F0FF';
 		createOBSField();
 	});
-	
+	loadOBSEvent();
 	StartTanu();
 }
 
@@ -225,6 +347,7 @@ body{
 .frame{
 	border: 1px solid black;
 	height: 100%;
+	display: none;
 }
 #content{
 	width: 100%;
@@ -257,6 +380,7 @@ body{
 <div id="content">
 	<div id="content_tanu" class="frame"></div>
 	<div id="content_obs" class="frame">
+		<div id="obs_pause"><form name="op"><label><input type="checkbox" name="opc" onchange="obsPauseStateChange()">pause OBS event trigger</label></form></div>
 		<div id="fix_content"></div>
 		<div id="scene_content"></div>
 	</div>
