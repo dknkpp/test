@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <style type="text/css">
+form{
+    text-align: center;
+}
+h1{
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+textarea{
+    height: 10em;
+    width: 40em;
+}
+    </style>
+    <script type="text/javascript" src="./tiny_segmenter-0.2.js"></script>
+    <script type="text/javascript">
+class iPoint{
+    constructor(width, height){
+        this.width = Math.floor(width);
+        this.height = Math.floor(height);
+    }
+}
+
+class iRect{
+    constructor(sPoint, ePoint){
+        this.sPoint = sPoint;
+        this.ePoint = ePoint;
+        
+        this.size = null;
+        this.center = null;
+    }
+    
+    getSize(){
+        if(this.size === null)
+            this.size = new iPoint(Math.abs(sPoint.width - ePoint.width), Math.abs(sPoint.height - ePoint.height));
+        return this.size;
+    }
+    
+    getCenter(){
+        if(this.center === null)
+            this.center = new iPoint(Math.min(sPoint.width, ePoint.width) + this.getSize().width/2, Math.min(sPoint.height, ePoint.height) + this.getSize().height/2);
+        return this.center;
+    }
+}
+
+let dImage = './souzaidragon.png';
+
+// start at 160, 120
+// end   at 540, 380
+
+let oImage = new Image();
+let oWidth = 0;
+let oHeight = 0;
+let sPoint = new iPoint(70, 120);
+let ePoint = new iPoint(460, 380);
+let oRect = new iRect(sPoint, ePoint);
+let iTextPos = 0;
+let iLoaded = false;
+let osouzai = new Array();
+let tImage;
+let fSize = 60;
+let fFamily = 'メイリオ';
+let segmenter = new TinySegmenter();
+let reg = new RegExp(/^[!"%')\*\+\-\.,\/:;>?@\\\]^_`|}~？！。、」』】はがのをにへとで]$/);
+
+window.onload = function(){
+    oImage.crossOrigin = 'anonymous';
+    oImage.src = dImage;
+    
+    oImage.onload = function(){
+        oWidth = oImage.naturalWidth;
+        oHeight = oImage.naturalHeight;
+        iLoaded = true;
+        
+        tImage = document.getElementById('vImg');
+        tImage.width = oWidth;
+        tImage.height = oHeight;
+        
+        resetPos();
+    }
+};
+
+
+function drawPrevImage(){
+    if(osouzai.length < 1)
+        return;
+    
+    if(iTextPos > 0)
+        iTextPos--;
+    
+    drawNowPos();
+}
+
+function drawNextImage(){
+    if(osouzai.length < 1)
+        return;
+    
+    if(iTextPos < osouzai.length - 1)
+        iTextPos++;
+    
+    drawNowPos();
+}
+
+function drawNowPos(){
+    if(iTextPos < osouzai.length)
+        drawText(osouzai[iTextPos]);
+    
+    viewTextPos();
+}
+
+function drawText(txt){
+    
+    let canvas = document.createElement('canvas');
+    let twod = canvas.getContext('2d');
+    canvas.width = oWidth;
+    canvas.height = oHeight;
+    
+    twod.drawImage(oImage, 0, 0, oWidth, oHeight, 0, 0, oWidth, oHeight);
+    
+    twod.font = 'bold '+fSize + 'px "'+ fFamily +'"';
+    twod.textAlign = "center";
+    twod.textBaseline = "top";
+    
+    let segs = segmentedText(txt);
+    let phrase = [];
+    
+    let s = 0;
+    
+    let maxh = 0;
+    
+    for(let i = 0; i < segs.length; i++){
+        let st = getText(segs, s, i);
+        let w = twod.measureText(st).width;
+        
+        //console.log(s +", " + segs.length + ", " + i + " " + st + ": " + oRect.getSize().width + " / " + w);
+        
+        if(oRect.getSize().width < w){
+            if(s == i){
+                let ph = getText(segs, s, i);
+                phrase.push(ph);
+                //console.log("type: 1 " + ph);
+                s = i+1;
+                continue;
+            }else{
+                let ph = getText(segs, s, --i);
+                phrase.push(ph);
+                //console.log("type: 2 " + ph);
+                s = i+1;
+                continue;
+            }
+        }
+        
+        if(segs.length - 1 === i){
+            let ph = getText(segs, s, segs.length-1);
+            phrase.push(ph);
+            //console.log("type: 3 " + ph);
+        }
+    }
+    
+    for(let i = 0; i < phrase.length; i++){
+        let lPos = getLinePos(phrase.length, i, fSize*1.1);
+        twod.fillText(phrase[i], lPos.width, lPos.height)
+    }
+    
+    let nImage = document.createElement('img');
+    nImage.src = canvas.toDataURL();
+    removeAllChild(tImage);
+    tImage.appendChild(nImage);
+    canvas.remove();
+    canvas = null;
+}
+
+function getText(strs, start, end){
+    let str = "";
+    for(;start <= end;start++){
+    	str += strs[start];
+    }
+    return str;
+}
+
+function getSouzaiList(){
+    let str = document.f.t.value;
+    if(str.length === 0){
+        return new Array();
+    }
+    let rawList = str.replaceAll('\r\n', '\n').replace('\r', '\n').split('\n');
+    let rList = new Array();
+    for(let _str of rawList){
+        if(_str.length > 0){
+            rList.push(_str);
+        }
+    }
+    return rList;
+}
+
+function resetPos(){
+    iTextPos = 0;
+    osouzai = getSouzaiList();
+    drawNowPos();
+}
+
+function viewTextPos(){
+    let tp = document.getElementById('tp');
+    removeAllChild(tp);
+    tp.appendChild(document.createTextNode((osouzai.length === 0)?0:1+iTextPos));
+}
+
+function removeAllChild(elem){
+    while(elem.hasChildNodes()){
+        elem.removeChild(elem.firstChild);
+    }
+}
+
+function getLinePos(lineMax, lineNow, fSize){
+    return new iPoint(oRect.getCenter().width, oRect.getCenter().height - (lineMax/2 - lineNow)*fSize);
+}
+
+function segmentedText(txt){
+    let words = [];
+    let segs = segmenter.segment(txt);
+    for(let i = 0; i < segs.length; i++){
+        if(words.length === 0){
+            words.push(segs[i]);
+        }else if(reg.test(segs[i])){
+            words[words.length - 1] += ''+segs[i];
+        }else{
+            words.push(segs[i]);
+        }
+    }
+    
+    return words;
+}
+
+    </script>
+</head>
+<body>
+<form name="f">
+<h1>好きな〇〇発表ドラゴンメーカー</h1>
+<div id="vImg"></div>
+<textarea name="t" onchange="resetPos();">からあげ
+ハンバーグ
+とんかつ
+肉を甘辛く炒めたやつ
+おひたし
+アジフライ
+とんかつ
+甘酢の餡がかかってるやつ
+エビチリ
+メンチカツ
+肉じゃが
+ごぼうとにんじん炒めたやつ</textarea>
+<br>
+<input type="button" value="前" onclick="drawPrevImage();"> 
+今 <span id="tp">1</span> 行目
+<input type="button" value="次" onclick="drawNextImage();"><br>
+画像部分右クリから保存とかできます。
+</form>
+</body>
+</html>
