@@ -1,0 +1,279 @@
+<html lang=ja>
+    <head>
+        <meta charset="UTF-8">
+        <title>obs timer</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=WDXL+Lubrifont+JP+N&display=swap" rel="stylesheet">
+        <style type="text/css">
+            * {
+                margin: 0px;
+                padding: 0px;
+            }
+            form {
+                color: white;
+                vertical-align: center;
+            }
+            form[name=timer]{
+                font-size: 100px;
+                display: flex;
+            }
+            input[type=number] {
+                font-size: 100px;
+                background-color: transparent;
+                color: white;
+                width: 108px;
+                border: 0px;
+                font-family: "WDXL Lubrifont JP N", sans-serif;
+            }
+            input[type=button] {
+                font-size: 30px;
+                height: 30px;
+                border: 0px;
+                background-color: #ffffff80;
+                font-family: "WDXL Lubrifont JP N", sans-serif;
+            }
+            input[type=button]:hover {
+                border: 1px solid #808080ff;
+                background-color: #ffffffff;
+            }
+            input[type=number]:hover {
+                border: 1px solid #808080;
+            }
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+            div#operators {
+                display: none;
+            }
+            audio {
+                display: none;
+            }
+        </style>
+        <script type="text/javascript">
+            let timer = null;
+            let endTime = null;
+            let prevH = 0;
+            let prevM = 20;
+            let prevS = 0;
+
+            function operatorSwitch(){
+                let d = document.getElementById("operators");
+                d.style.display = d.style.display.toLowerCase() == "block" ? "none" : "block";
+            }
+
+            function startTimer(){
+                let fm = document.timer;
+                let dt = new Date();
+                
+                prevH = fm.hour.value - 0;
+                prevM = fm.min.value - 0;
+                prevS = fm.sec.value - 0;
+
+                dt.setHours(dt.getHours() + (fm.hour.value - 0));
+                dt.setMinutes(dt.getMinutes() + (fm.min.value - 0));
+                dt.setSeconds(dt.getSeconds() + (fm.sec.value - 0));
+                endTime = dt;
+                timer = setInterval(checkTimer, 250);
+            }
+            function checkTimer(){
+                let diff = endTime.getTime() - (new Date()).getTime();
+                if(diff <= 0){
+                    stopTimer();
+                    playAlert();
+                    return;
+                }
+                let fm = document.timer;
+                let dt = new Date(diff);
+                fm.hour.value = pad0(dt.getUTCHours());
+                fm.min.value = pad0(dt.getUTCMinutes());
+                fm.sec.value = pad0(dt.getUTCSeconds());
+            }
+            function stopTimer(){
+                if(timer != null)
+                    clearInterval(timer);
+                timer = null;
+            }
+            function playAlert(){
+                document.getElementById("alert").play();
+            }
+            function resetTimer(){
+                let fm = document.timer;
+                fm.hour.value = pad0(prevH);
+                fm.min.value = pad0(prevM);
+                fm.sec.value = pad0(prevS);
+            }
+
+            function pad0(num){
+                let str = ""+num+"";
+                if(str.length < 2)
+                    str = "0"+str;
+                return str;
+            }
+        </script>
+    </head>
+    <body>
+        <form name="timer">
+            <input type="number" max="60" min="0" value="00" name="hour">:<input type="number" max="60" min="0" value="20" name="min">:<input type="number" max="60" min="0" value="00" name="sec"><br>
+        </form>
+        <form name="operator">
+            <input type="button" value="▼" onclick="operatorSwitch()">
+            <div id="operators">
+                <input type="button" value="start" onclick="startTimer()">
+                <input type="button" value="stop" onclick="stopTimer()">
+                <input type="button" value="reset" onclick="resetTimer()">
+            </div>
+        </form>
+        <audio id="alert">
+            <source type="audio/mp3" src="data:audio/mp3;base64,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
+HH7Ajudwrggip0jkFlpl0YrWl1Ba7uaySdLcFA4uX9SJUFilrlm72rZq1lHTpsoBa4McQpVelSmR
+eUNwOcGqTVS2v/OF4O6Aymxia27/kaQU1Po/1dAvlQxQf/6SZMmrf/1EWNn//ykRL//rPmv+IkxB
+TUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7
+ksTQgBT5fQIO7m9CHS/hNbxB6FVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQAEteKAVoLlQW3RH5LVsyVSwxVB4OGoEHJgZWHDQ8dw
+xJnnzGxHMcdExl4HhxGOaFGxOqRKrOQyaDGBoaGqIaF5mIHKcokZIi83yoYrx9otLWtSpTYAKmEc
+d5xrWghYFAAgwuSdT97V7Lo3S+BXAwR8EUaL9Qwt6/9vBPYrgUonAoicxK2g6t8b9YhzJMvJfmdx
+37VxvL1ijRB6iYl4IUuXWZNfG//mssWFO9pb1tnX12JnLarx6T2TbL9W/+/9bip5JM7qev///+sy
+Kogpgngjq7r////8xWJuj6VMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVX/+5LEpwPbcaTWTmXxAAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV">
+        </audio>
+    </body>
+</html>
